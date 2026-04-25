@@ -54,9 +54,7 @@ pipeline {
                 '''
                 echo 'Menjalankan aplikasi di server...'
                 sh '''
-                    ssh -o StrictHostKeyChecking=no \
-                        -o ProxyJump=root@server-proxmox \
-                        root@10.1.49.196 \
+                    ssh -o root@10.1.49.196 \
                         "cd /root/spring-boot-testing && docker compose up -d"
                 '''
             }
