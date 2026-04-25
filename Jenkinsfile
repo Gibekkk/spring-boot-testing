@@ -31,11 +31,10 @@ pipeline {
 
         stage('Test') {
             steps {
-                echo 'Menjalankan container untuk smoke test...'
-                sh 'docker compose up -d'
-
-                echo 'Menjalankan smoke test...'
-                sh 'chmod +x test.sh && ./test.sh'
+                sh 'docker compose up -d mongo-db'
+	        sh 'sleep 10' // tunggu MongoDB ready
+		sh 'mvn test'
+	        sh 'docker compose down'
             }
             post {
                 always {
