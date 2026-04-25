@@ -45,15 +45,13 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo 'Menyalin docker-compose ke server...'
+                echo 'Deploy ke server...'
                 sh '''
-                    scp -o StrictHostKeyChecking=no docker-compose.yml \
-                        root@10.1.49.196:/root/spring-boot-testing/
-                '''
-                echo 'Menjalankan aplikasi di server...'
-                sh '''
-                    ssh -o StrictHostKeyChecking=no root@10.1.49.196 \
-                        "cd /root/spring-boot-testing && docker compose up -d"
+                    ssh -o StrictHostKeyChecking=no root@10.1.49.196 "
+                    cd /root/spring-boot-testing &&
+                    git pull &&
+                    docker compose up -d --build
+                    "
                 '''
             }
         }
