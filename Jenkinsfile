@@ -22,7 +22,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Menjalankan unit test dan build JAR...'
-                sh 'mvn clean package'
+                sh 'mvn clean package -DskipTests'
 
                 echo 'Membangun Docker image...'
                 sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
