@@ -47,12 +47,12 @@ pipeline {
             steps {
                 echo 'Menyalin docker-compose ke server...'
                 sh '''
-                    scp -o docker-compose.yml \
+                    scp -o StrictHostKeyChecking=no docker-compose.yml \
                         root@10.1.49.196:/root/spring-boot-testing/
                 '''
                 echo 'Menjalankan aplikasi di server...'
                 sh '''
-                    ssh -o root@10.1.49.196 \
+                    ssh -o StrictHostKeyChecking=no root@10.1.49.196 \
                         "cd /root/spring-boot-testing && docker compose up -d"
                 '''
             }
