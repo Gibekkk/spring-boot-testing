@@ -6,95 +6,71 @@ pipeline {
     }
 
     environment {
-        BUILD_VERSION = readMavenPom().getVersion()
-        DOCKER_IMAGE = 'mohyehia99/spring-boot-testing'
+        IMAGE_NAME = 'spring-boot-testing'
+        IMAGE_TAG  = '0.0.8'
     }
 
     stages {
 
-        stage('Clean Workspace') {
-            steps {
-                script {
-                    cleanWs()
-                }
-            }
-        }
-
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/mohyehia/spring-boot-testing'
+                echo 'Mengambil kode dari GitHub...'
+                checkout scm
             }
         }
 
-        stage('Unit Testing') {
+        stage('Build') {
             steps {
-                sh 'mvn clean test'
+                echo 'Menjalankan unit test dan build JAR...'
+                sh 'mvn clean package'
+
+                echo 'Membangun Docker image...'
+                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Test') {
             steps {
-                withSonarQubeEnv(credentialsId: 'sonarQube-token', installationName: 'SonarQube') {
-                    sh "mvn verify sonar:sonar -DskipTests=true -Dsonar.projectKey=spring-boot-testing -Dsonar.projectName='spring-boot-testing'"
-                }
-                waitForQualityGate abortPipeline: true
-            }
-        }
+                echo 'Menjalankan container untuk smoke test...'
+                sh 'docker compose up -d'
 
-        stage('Package') {
-            steps {
-                sh 'mvn package -Dmaven.test.skip'
+                echo 'Menjalankan smoke test...'
+                sh 'chmod +x test.sh && ./test.sh'
             }
-        }
-
-        stage('Publish test results') {
-            steps {
-                junit "**/target/surefire-reports/*.xml"
-            }
-        }
-
-        stage('OWASP Dependency Check') {
-            steps {
-                dependencyCheck additionalArguments: '''
-                    -o './\'
-                    -s './\'
-                    -f 'ALL'
-                    --prettyPrint''', odcInstallation: 'OWASP Dependency Check'
-                dependencyCheckPublisher pattern: 'dependency-check-report.xml'
-            }
-        }
-
-        stage('Trivy FS Scan') {
-            steps {
-                sh 'trivy fs .'
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                sh "mvn spring-boot:build-image -DskipTests"
-            }
-        }
-
-        stage('Trivy Image Scan') {
-            steps {
-                sh 'trivy image mohyehia99/spring-boot-testing:${BUILD_VERSION}'
-            }
-        }
-
-        stage('Docker Push') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'dockerHubUsername', passwordVariable: 'dockerHubPassword')]) {
-                    sh "docker login -u ${env.dockerHubUsername} -p ${env.dockerHubPassword}"
-                    sh "docker push mohyehia99/spring-boot-testing:${BUILD_VERSION}"
+            post {
+                always {
+                    echo 'Membersihkan container test...'
+                    sh 'docker compose down'
                 }
             }
         }
 
-        stage('Trigger microservices-k8s-manifests Job') {
+        stage('Deploy') {
             steps {
-                sh "curl -v -k --user admin:11295d15cb5acb2914d803b4d62222b728 -X POST -H 'cache-control: no-cache' -H 'Content-Type: application/x-www-form-urlencoded' --data 'DOCKER_IMAGE=${DOCKER_IMAGE}&BUILD_VERSION=${BUILD_VERSION}&APPLICATION=spring-boot-testing' http://localhost:8080/job/microservices-k8s-manifests/buildWithParameters?token=spring-microservices-in-action-token"
+                echo 'Menyalin docker-compose ke server...'
+                sh '''
+                    scp -o StrictHostKeyChecking=no \
+                        -o ProxyJump=root@server-proxmox \
+                        docker-compose.yml \
+                        root@10.1.49.196:/root/spring-boot-testing/
+                '''
+                echo 'Menjalankan aplikasi di server...'
+                sh '''
+                    ssh -o StrictHostKeyChecking=no \
+                        -o ProxyJump=root@server-proxmox \
+                        root@10.1.49.196 \
+                        "cd /root/spring-boot-testing && docker compose up -d"
+                '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline berhasil! Aplikasi berjalan di 10.1.49.196:9090'
+        }
+        failure {
+            echo 'Pipeline gagal! Periksa log di atas.'
         }
     }
 }
