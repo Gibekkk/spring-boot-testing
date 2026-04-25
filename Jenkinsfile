@@ -47,9 +47,7 @@ pipeline {
             steps {
                 echo 'Menyalin docker-compose ke server...'
                 sh '''
-                    scp -o StrictHostKeyChecking=no \
-                        -o ProxyJump=root@server-proxmox \
-                        docker-compose.yml \
+                    scp -o docker-compose.yml \
                         root@10.1.49.196:/root/spring-boot-testing/
                 '''
                 echo 'Menjalankan aplikasi di server...'
