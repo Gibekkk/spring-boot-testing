@@ -34,7 +34,6 @@ pipeline {
                 sh 'docker compose up -d mongo-db'
 	        sh 'sleep 30' // tunggu MongoDB ready
 		sh 'mvn test -pl . -Dtest="CategoryControllerTest,ProductControllerTest,CategoryServiceTest,ProductServiceTest" -DfailIfNoTests=false'
-	        sh 'docker compose down'
             }
             post {
                 always {
