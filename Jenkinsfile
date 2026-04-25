@@ -32,8 +32,8 @@ pipeline {
         stage('Test') {
             steps {
                 sh 'docker compose up -d mongo-db'
-	        sh 'sleep 10' // tunggu MongoDB ready
-		sh 'mvn test'
+	        sh 'sleep 30' // tunggu MongoDB ready
+		sh 'mvn test -e'
 	        sh 'docker compose down'
             }
             post {
